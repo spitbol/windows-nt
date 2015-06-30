@@ -1,0 +1,93 @@
+# Windows NT SPITBOL-386.  Makefile for external function tests.
+#
+# Builds all C and Assembly language external test  functions into a
+# single library file.
+#
+# Designed for Borland C++ compiler and Assembler (TASM or TASM32).
+#
+#  Assumes MS-DOS environment variable "BORLAND" is set to the drive
+#  and path of the Borland C++ root directory.  For example,
+#      C:>SET BORLAND=C:\BC4
+#
+# To add a new external function to the library, add the .obj form of
+# its name to either AOBJS or COBJS and also add it to the file spitbol.lnk.
+#
+
+# Name of SPITBOL Library to build (.slf).
+LIBNAME= testef
+
+%set $(BORLAND) = BORLAND	# Pick up from DOS environment
+
+# SPITBOL Version:
+SETREAL=0                       # 1=Build to support files > 2GB
+
+# Compiler
+CC=	bcc32
+CFLAGS= -WXD -I$(BORLAND)\include -a1 -d -w-par -O1 -DSETREAL=$(SETREAL)
+
+# Linker:
+#
+LNK=	tlink32
+LFLAGS= /c /Tpd -L$(BORLAND)lib
+
+# Assembler:
+#
+AS=	tasm32
+ASFLAGS= /r /ml /d_MASM_=0 /dSETREAL=$(SETREAL) 
+
+# Implicit rule for building objects from C files.
+.c.obj:
+	$(CC) /c $(CFLAGS) /I..\ $<
+
+# Implicit rule for building objects from C files.
+.asm.obj:
+	$(AS) $(ASFLAGS) /I..\ $<, $*.obj;
+
+# C Headers:
+CHDRS=	..\extern32.h ..\blocks32.h ..\system.h
+
+# Assembler Headers:
+AHDRS=  ..\extrn386.inc ..\block386.inc ..\system.inc
+
+# SPITBOL return functions:
+SOBJS=  ..\extrnlib.obj
+
+# C external functions:
+COBJS=  testcef.obj
+
+# Assembly language external functions:
+AOBJS=  testef1.obj testef2.obj testef3.obj testef4.obj testef5.obj testef6.obj   
+
+# All objects:
+OBJS=	$(AOBJS) $(COBJS)
+
+# Library module (DLL):
+$(LIBNAME).slf:	$(OBJS)
+	$(LNK) $(LFLAGS) -L$(BORLAND)\lib c0d32 @$(LIBNAME).LNK, $(LIBNAME).slf, , dpmi32 cw32
+
+# Cleanup:
+clean:
+	del testcef.obj
+	del testef1.obj
+	del testef2.obj
+	del testef3.obj
+	del testef4.obj
+	del testef5.obj
+	del testef6.obj
+
+### MKMF:  Do not remove this line!  Automatic dependencies follow.
+
+testcef.obj:    $(CHDRS) 
+
+testef1.obj:    $(AHDRS)
+
+testef2.obj:    $(AHDRS)
+
+testef3.obj:    $(AHDRS)
+
+testef4.obj:    $(AHDRS)
+
+testef5.obj:    $(AHDRS)
+
+testef6.obj:    $(AHDRS)
+

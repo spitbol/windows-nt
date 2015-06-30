@@ -1,0 +1,94 @@
+* Copyright 1994-2003, Mark Emmer, Catspaw, Inc.  All rights reserved.
+* Use of this source code is governed by a BSD-style
+* license that can be found in the LICENSE file.
+
+* Simple mouse test program
+*
+* type 'x' to exit
+        &alphabet break('x') @exit
+
+-include "host.inc"
+
+        &stlimit = -1
+
+* Obtain information encoded in a mouse event returned by HOST(8)
+*
+* key = host(8)
+* key is 0-65535 for keyboard character, >=65536 for mouse event
+* Event = GE(key,65536) MouseEvent(key, .row, .column, .buttons) :s(do_mouse)
+*
+*    key    = value >= 65536 returned by host(8)
+*    row    = row value of mouse cursor
+*    column = column value of mouse cursor
+*    buttons= String of buttons currently pressed:
+*             'L' = left mouse button
+*             'R' = right mouse button
+*             'M' = middle mouse button
+*    Event  = 0 - mouse button change (pressed or released)
+*             1 - mouse moved
+*             2 - second click (button pressed) of a double-click occurred
+*            16 - mouse wheel rotated up.
+*            32 - mouse wheel rotated down.
+
+        define('MouseEvent(key,prow,pcol,pbutton)b')   :(MouseEvent_end)
+MouseEvent
+        MouseEvent = remdr(key,1073741824) / 16777216
+        $pcol = remdr(key,256)
+        $prow = remdr(key,65536) / 256
+        b = remdr(key,16777216) / 65536
+        $pbutton = (GE(b,4) 'M','')
+        $pbutton = GE(remdr(b,4),2) 'R' $pbutton
+        $pbutton = EQ(remdr(b,2),1) 'L' $pbutton       :(return)
+MouseEvent_end
+
+        c = ' '
+*        lastrow = GetLines() - 1                         ;* bottom of screen
+        lastrow = 2
+        normal = NormAtr()                               ;* normal screen attribute
+        UpdateScn()                                        ;* update screen
+        Cursor(2,1)                                     ;* cursor on all the time
+        Mouse(1)                                     ;* enable mouse
+l       GoTo(0,0)                                     ;* goto 0,0
+        WriteStr(date())                                 ;* write date
+        UpdateLine(0)                                      ;* update line 0
+        GoTo(10,20)                                   ;* goto 10,20
+        key = Ready() ReadKey(8)                :f(l)      ;* no event
+        eventcount = eventcount + 1                     ;* count total events
+        eq(key,exit)                         :s(done)   ;* check for 'x'
+        (lt(key,256) WriteChr(char(key)))     :s(report) ;* if char, display it
+        event = MouseEvent(key,.row,.col,.buttons)      ;* unpack mouse event
+
+* If left mouse button pressed, write an asterisk at the mouse position.
+* If the right mouse button is pressed, write a space.
+* If the SHIFT key is down, make it Red.  If CONTROL key down, make it Blue.
+* If ALT key is down, make it Green.  If more than one, OR the colors.
+*
+        buttons ? ANY('LR')                  :f(check)  ;* no button pressed
+        GoTo(row,col)                                 ;* goto mouse position
+        dot = (?(buttons ? 'L') '*', ' ')               ;* write * or space
+        keystate = KeyState()                             ;* get keyboard flags
+        color = eq(remdr(keystate,16),0) normal :s(w)   ;* if no special keys
+        color = 0
+        color = ge(remdr(keystate,2),1) color + 4       ;* red for shift
+        color = ge(remdr(keystate,8),4) color + 1       ;* blue for control
+        color = ge(remdr(keystate,16),8) color + 2      ;* green for alt
+w       SetChrAtr(1,color)                                ;* write attribute
+        WriteChr(dot)                                    ;* write char
+
+* Work around for bug in Borland DOS Extender when operating in full screen
+* mode under MS-DOS or Windows 3.1.  When the mouse cursor moves, the
+* system restores the character under the old mouse position, even if we
+* wrote a new character there.
+*
+check   (eq(prevrow,row) eq(prevcol,col))    :s(report) ;* jump if haven't moved
+        UpdateLine(prevrow)                                ;* update previous row
+        prevrow = row;  prevcol = col
+
+report  GoTo(lastrow,0)                               ;* goto bottom of scrn
+        s = "row=" lpad(+row,2) ", col=" rpad(+col,2)
++           ", buttons=" rpad(buttons,3) ", event=" +event
++           ", event count=" +eventcount                ;* report info
+        WriteStr(s)
+        UpdateLine(lastrow)                   :(l)
+done
+end

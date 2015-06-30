@@ -1,0 +1,106 @@
+          Building a Library of SPITBOL External Functions
+          using Microsoft Developer Studio and Visual C++
+                           4-28-97
+
+These instructions demonstrate how to build a library of SPITBOL external
+functions using Microsoft Developer Studio.  The library is built as a
+DLL (Dynamic Link Library).  In this example, we show how to build
+userlib.slf which will contain your external functions.
+
+These instructions were tested with Microsoft Visual C++ version 4.2.
+
+1. Select File - New - Project Workspace.  Choose "Dynamic Link Library"
+as the project type, and pick a suitable name, like "UserLib".  Select
+the directory where the project will be based.  Our preference is to
+select the directory containing the SPITBOL executable in the "Location"
+field at the bottom of the dialog box, and then type "UserLib" in the
+"Name" field at the top of the dialog box.
+
+This will create the directory "UserLib" below your SPITBOL directory,
+and make it the project directory.  By doing so, it makes it easy to
+automatically build the library into the SPITBOL directory by referencing
+it as "..\userlib.slf".  This is handy because the operating system
+automatically attempts to open library files from the directory where
+the SPITBOL executable resides.
+
+2. By default, Developer Studio places two directories below the project
+directory: "Debug" and "Release" where you can build with two different
+configurations of the external functions.  If you do not need two config-
+urations, you can delete one from the Build - Configurations... and adjust
+the default configuration name from the Build - Set Default Configuration
+menu.  However, if you want to perform interactive symbolic debugging of
+your external function, you will need the Debug configuration.
+
+3. Insert the source files into the project:  From the Insert - File into
+Project... menu select the source files to be added.  At a minimum, you
+will need the file of SPITBOL utility functions in extrnlib.c, plus your
+C or C++ source files.  If you're just beginning to write external functions
+in C, examine one of the sample C files provided with SPITBOL and adapt it
+to your needs.
+
+Notice that SPITBOL passes arguments left-to-right, whereas C passes them
+right-to-left, making the function declarations a bit ungainly.
+
+Notice too that we have adapted the convention of naming external functions
+"EXT_FUNCTIONNAME_", and providing a SPITBOL include file to do the actual
+LOAD() function call.  An OPSYN call is used to make a nicer version of
+the name equivalent to "EXT_FUNCTIONNAME_".  In a few cases, the include
+file will wrap the external function with a SPITBOL function.  Isolating
+the common name by which the function will be known to the user from the
+name in the library file permits the implementation to be altered without
+the calling program's knowledge.  (Thanks to Arjan Loeffen for suggesting
+this technique).
+
+4. Set appropriate options from the Build - Settings... menu:
+
+   Under the C/C++ tab, category General, select the level of optimization.
+   Under catagory Code Generation, set the "struct member alignment" to
+   1 Byte (VERY IMPORTANT).  Other category settings under the C/C++ tab
+   can be adjusted as appropriate for your source code.
+   
+   Under the Link tab, category General, change the output file name as
+   desired, for example, to "..\userlib.slf".
+
+5. Build the library by selecting Build - Build userlib.slf from the menu, or
+   pressing F7.
+
+6. Fix any errors, create the SPITBOL include file to perform the actual
+   LOAD() calls, and test with SPITBOL.  We like testing interactively with
+   the code.spt program.  You can type:
+
+   ?-include 'userlib.inc'
+
+   directly into code.spt, and begin exercising your new function
+   interactively.
+
+7. Visual C++ makes symbolic debugging of your function simple. Follow these
+   steps:
+
+   a. Under the Build - Settings dialog box:
+ 
+      1. Highlight the Win32 Debug line in the "Settings For:" pane.
+      2. Select the "Debug" tab.
+      3. Under "Executable for debug session" enter the full pathname to
+         your spitbol.exe file.
+      4. Under "Working directory:" enter the pathname of the directory where
+         you want to debug.  For us, it's usually the directory containing
+         our code.spt program and the various SPITBOL include file.
+      5. Under "Program arguments:", enter the command line to be passed
+         to SPITBOL -- your test program, or code.spt for example.
+      6. Press OK.
+
+   b. Under the Build - Set Default Configuration... menu, select the
+      Win32 Debug configuration.
+
+   c. Rebuild userlib.slf, to get a version that contains all the symbolic
+      debugging information.
+
+   d. Set breakpoints in your source files, and select Build - Debug - Go.
+      SPITBOL will begin execution, and run until a breakpoint is encountered,
+      at which time you have full access to VC++'s debugging capabilities.
+
+   e. Once debugging is complete, switch back to the Win32 Release version
+      of the project, rebuild userlib.slf, and distribute the non-debug
+      version of the library.
+
+---------------------------- end of ms-vcpp.txt ---------------------------

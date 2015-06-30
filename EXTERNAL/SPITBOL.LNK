@@ -1,0 +1,3 @@
+address.obj   cvt.obj       directs.obj   extrnlib.obj  filename.obj  +
+findname.obj  ltrim.obj     logic.obj     pathname.obj  realcvt.obj   +
+strftime.obj  windows.obj   x.obj         

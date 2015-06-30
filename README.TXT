@@ -1,6 +1,6 @@
-#           SPITBOL for Windows NT - Version 1.30.22
+##           SPITBOL for Windows NT - Version 1.30.22
 
-December 24, 2003
+                      December 24, 2003
 
 
 This version of SPITBOL uses the Windows NT API for O/S support.

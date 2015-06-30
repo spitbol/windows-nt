@@ -1,0 +1,657 @@
+                    Windows NT SPITBOL Change History
+                  -------------------------------------
+
+This file details changes made to SPITBOL-386 through the release
+of Windows NT version 1.30.  It has been edited to include only
+information pertinent to the Windows NT version.
+
+
+Changes in Version 1.30
+-----------------------
+ 1. To support year 2000 and the need for 4-digit years, we have added
+    an optional integer argument to DATE() function to specify the form
+    of the date string:
+
+     DATE()     MM/DD/YY HH:MM:SS     (the default form, as before)
+     DATE(0)    MM/DD/YY HH:MM:SS
+     DATE(1)    MM/DD/YYYY HH:MM:SS   (existing form with 4-digit year)
+     DATE(2)    YYYY-MM-DD HH:MM:SS   (ISO standard form)
+
+     Other integer values outside the range 0-2 behave like 0.
+
+ 2. Fixed bug when execution of the LOAD function triggered a garbage
+    collection.
+
+ 3. Removed '/' as a command line option specifier character.  All command
+    line options must be specified with '-'.
+
+ 4. Added a HOST(-1, N) call to obtain information about SPITBOL's memory
+    usage.  Allowable values for N and the items returned are:
+ 
+    0 = The increment (in bytes) by which memory is expanded when SPITBOL's
+        work space becomes full.  Command line parameter -i.
+ 
+    1 = The maximum size (in bytes) for the workspace.  Command line
+        parameter -d.
+
+    2 = Lowest memory address used by the workspace.
+
+    3 = Current highest address used by the workspace.
+ 
+    4 = Maximum stack size (in bytes).  Command line parameter -s minus
+        400 bytes for a safety margin.
+ 
+    5 = Current amount of stack space in use (bytes).
+
+    6 = Size of a SPITBOL word, in bytes.
+ 
+    Note that the maximum object size (command line parameter -m) can be
+    obtained from &MAXLNGTH.
+ 
+    During garbage collection, each recursion of the garbage collector to
+    follow a pointer will use (2 * HOST(-1,6)) bytes of stack space.  This
+    has ramifications for users creating data structures with long chains
+    of linked nodes.
+  
+ 5. The Cursor (HOST(5,I)) function now accepts an additional
+    argument to specify the visibility of the cursor:
+ 
+      HOST(5,I) or HOST(5,I,0) sets the cursor type to I, and
+      turns the cursor on when input is requested of the user,
+      and off when input has completed.
+ 
+      HOST(5,I,1) leaves the cursor on at all times.
+ 
+ 6. The new ReadAtrString (HOST(31,N)) function returns an N
+    byte string of screen attributes beginning at the current
+    cursor position.  The attributes are read directly from the
+    video buffer.  The cursor position remains unchanged.
+ 
+ 7. The new WriteAtrString (HOST(32,S) function writes attribute
+    string S directly to the video buffer at the current cursor
+    position.  The cursor position remains unchanged.
+ 
+ 8. The new CopyLine (HOST(33,LINE)) function copies the characters
+    of the specified line from the video buffer to the internal
+    screen buffer maintained by SPITBOL.  The characters can be
+    retrieved from the screen buffer with ReadStr (HOST(14,N)).
+
+ 9. The new CopyScn (HOST(34)) function copies the entire video
+    buffer to the internal screen buffer maintained by SPITBOL.
+ 
+10. The new ScrollAll (HOST(35,L1*256+C1,L2*256+C2,N,ATR)) function
+    scrolls a rectangular region of the video buffer up or down.
+    N is positive to scroll up N lines, negative to scroll down
+    -N lines.  The upper left corner of the scroll region is
+    at line L1, column C1.  The lower right corner is given by
+    line L2, column C2 (inclusive).  N is zero to blank the entire
+    region.  ATR is the character attribute assigned to the blank
+    lines created by the scroll operation.  L2 must be > L1, and
+    C2 must be > C1.
+ 
+    Note that this operation effects the video buffer only, not
+    SPITBOL's internal screen buffer.  The scrolling operation
+    affects both characters and color attributes within the
+    scroll region.  The user should follow this function with a
+    call of CopyScn (HOST(34)) to bring the internal screen buffer
+    back into synch with the video display.
+
+11. Support for mouse input is provided:
+ 
+    a) The new function MOUSE(I) (HOST(214,I)) can be used to enable
+    or disable mouse input.  Mouse input is disable by default.  Set
+    I to 1 to enable mouse input, to 0 to disable it.
+ 
+    b) When mouse input is enabled, the Ready (HOST(7)) function will
+    succeed if a keystroke is available, OR if a mouse input event is
+    available.
+ 
+    c) The ReadKey (HOST(8)) and ReadKeySpecial (HOST(30)) functions
+    will return a keystroke OR a mouse event, depending on which is
+    next in the application's event queue. The returned value will
+    be less than 65536 if it is a keystroke.  It will be greater than
+    65536 if it is a mouse event.  The mouse event is encoded as a 32
+    bit integer as follows:
+
+        bits 0-7        column position of mouse cursor
+        bits 15-8       row position of mouse cursor
+        bits 23-16      button action:  bit 16 - left mouse button pressed
+                                        bit 17 - right mouse button pressed
+                                        bit 18 - middle mouse button pressed
+        bits 26-24      event type:     0 - mouse button pressed or released
+                                        1 - change in mouse position
+                                        2 - second click of double click
+        bit  30         always set
+        bit  31         always reset
+
+    A mouse event can be most easily processed in SPITBOL with a decoding
+    function such as the following:
+ 
+    * Obtain information encoded in a mouse event returned by HOST(8)
+    *
+    * key = host(8)
+    * key is 0-65535 for keyboard character, >=65536 for mouse event
+    * Event = GE(key,65536)
+    * +       MouseEvent(key, .row, .column, .buttons) :s(do_mouse)
+    *
+    *    key    = value >= 65536 returned by host(8)
+    *    row    = row value of mouse cursor
+    *    column = column value of mouse cursor
+    *    buttons= String of buttons currently pressed:
+    *             'L' = left mouse button
+    *             'R' = right mouse button
+    *             'M' = middle mouse button
+    *    Event  = 0 - mouse button change (pressed or released)
+    *             1 - mouse moved
+    *             2 - second click (button pressed) of a double-click occurred
+    *             
+            define('MouseEvent(key,prow,pcol,pbutton)b')   :(MouseEvent_end)
+    MouseEvent
+            $pcol = remdr(key,256)
+            $prow = remdr(key,65536) / 256
+            b = remdr(key,16777216) / 65536
+            $pbutton = (GE(b,4) 'M','')
+            $pbutton = GE(remdr(b,4),2) 'R' $pbutton
+            $pbutton = EQ(remdr(b,2),1) 'L' $pbutton
+            MouseEvent = remdr(key,1073741824) / 16777216 :(return)
+    MouseEvent_end
+    
+    d) It is often necessary to know the state of some keyboard keys
+    such as SHIFT, CONTROL, and ALT during a mouse event.  The new
+    KeyState (HOST(36)) function returns the state of these keys at
+    the time of the most recently reported keystroke or mouse event.
+    The integer value returned by HOST(36) is encoded as follows:
+  
+         SHIFT           01h
+         CONTROL         04h
+         ALT             08h
+         SCROLL LOCK     10h
+         NUM LOCK        20h
+         CAPS LOCK       40h
+  
+   e) The sample program MOUSE.SPT demonstrates use of these
+   functions.  Type 'x' to exit.
+
+   f) Known Bug:  When operating under MS-DOS, or under Windows
+   3.1 in full screen mode (using the Borland DOS Extender), the
+   following problem is present.  This problem appears to be in
+   Borland DOS Extender, and cannot be circumvented.
+ 
+   In full screen mode, the mouse pointer is shown by using reverse
+   video attributes, giving the appearance of a full block cursor.
+   Unfortunately, Borland appears to save and restore the character
+   at the mouse position as well as the video attributes.
+ 
+   If your program writes a character to the screen AT THE MOUSE
+   POSITION, Borland will overwrite it with its saved character when
+   the mouse moves to another position.  The character your program
+   wrote "under" the mouse cursor is lost.
+ 
+   One work around would be for your program to issue an UpdateLine
+   (HOST(20,row)) for the row containing the PREVIOUS mouse cursor
+   whenever the mouse moves to a different location.  This is shown
+   at label CHECK in the sample program MOUSE.SPT.
+
+
+Changes in Version 1.29 
+-----------------------
+ 1. The POS() and RPOS() matching functions contain a new optimization.
+    The optimization is triggered when either is the first node of a
+    pattern and has either an integer or simple expression variable
+    argument.  If the program is in unanchored mode and the scanning
+    cursor is zero, the cursor is advanced directly to the desired
+    position.  Formerly, the pattern match would fail and then retried
+    at the next starting cursor position.
+
+    Here are the conditions for the optimization to occur:
+
+    a) POS or RPOS must the first node of the compiled pattern.  That
+       means things like:
+
+          s ? POS() ...
+
+       but not
+
+          s ? (POS() ...) | (POS() ...)
+
+       (alternation is the first "node" in this case.)
+
+    b) The scan mode must be unanchored ( &ANCHOR = 0 ).
+
+    c) The argument to POS or RPOS must be either an integer constant,
+       or a deferred expression consisting of a simple, untraced variable.
+       That is,
+
+           POS(1)  or  POS(*N)
+
+       are fine, but
+
+           POS(*(N + 1))  or  POS(*F(X))  or  TRACE(.N); POS(*N)
+
+       cannot be optimized.
+
+    d) The current cursor position in the pattern match is 0.
+
+    If all of these conditions are true, then the cursor is advanced
+    directly to the desired position, just like TAB or RTAB would.
+    However, unlike TAB or RTAB, the characters skipped over are not
+    included in any future matched substring.
+
+    The optimization has been designed so that it is undetectable by
+    your program.  That is, there are no side-effects when POS or
+    RPOS are used in this way.
+
+    A pattern match of the form:
+ 
+         s ? tab(*n) . first search_pat = first replacement
+ 
+    can now be written more efficiently without the intermediate variable:
+ 
+         s ? pos(*n) search_pat = replacement
+
+ 2. Added option -Sxx to the list of options available for use with the 
+    INPUT and OUTPUT functions.  These allow the user to specify the 
+    "sharing mode" used when opening the file.  Possible values for xx 
+    are:
+ 
+    -sdn  deny none       Other users may open file for reading and writing
+    -sdr  deny read       Other users may open file for writing
+    -sdw  deny write      Other users may open file for reading
+    -sdrw deny read/write Other users may not open the file
+
+ 3. Fixed a problem that occurred when reading files.  Suppose a 
+    carriage return is the last character of SPITBOL's internal buffer.  
+    After reading that record, the user's program records the current 
+    file position with the SET function.  The reported position is 
+    between the carriage return and the line feed character expected to 
+    be found in the first position of the next data buffer.  An 
+    internal flag told SPITBOL to discard the line feed if it is the 
+    first character found on the next sequential read.
+
+    If the user subsequently repositioned the file using the recorded file
+    position, the line feed character will be transferred as part of a
+    forward read.  This is incorrect.
+
+    In this version, when a carriage return ends a data buffer, SPITBOL
+    will read ahead into the next data buffer to see if a line feed needs
+    to be discarded.  Therefore, the file position returned by SET will
+    always be after the second end-of-line (line feed) character.
+ 
+
+Changes in Version 1.28 
+-----------------------
+ 1. Added option -E to the list of options available for use with the 
+    INPUT function.  During text mode processing, -E tells SPITBOL to 
+    ignore the DOS end-of-file character (control-Z, decimal 26) if 
+    encountered within an input file.
+ 
+    Consider this situation:  a data file uses a single binary 0 character
+    as an end-of-record marker.  Within the record, a decimal 26 (EOF) may
+    appear as a normal data character.  SPITBOL's -m and -n options allow
+    you to specify the binary 0 end-of-record character, but the decimal 26
+    will signal end-of-file and terminate input.  One alternative is to
+    open the file in binary mode (wherein _all_ character codes are passed
+    through), and read the file in fixed length blocks (of say, 10,000
+    character).  Pattern matching through CHAR(0) could be used to break
+    out individual records.  Some buffer logic is required to make sure that
+    records spanning block boundaries are handled properly.  A simpler
+    solution is to use the -E, -M, and -N options:
+
+         INPUT(.in, 1, "filename[-e -m0 -n0]")
+
+    which maintains SPITBOL's normal record-oriented input but follows
+    the user's end-of-record convention and ignores the end-of-file character.
+    True end-of-file is detected after the last character of the file is read.
+
+
+Version 1.27
+------------
+ 1. Fixed a problem when invoking an include file from the CODE
+    function.  The remainder of the CODE argument string following
+    the -INCLUDE control statement was being ignored.  That is,
+ 
+    C = CODE("-INCLUDE 'FOO.INC'; OUTPUT = 'FOO.INC loaded' :(DONE)")
+ 
+    now compiles any statement(s) following the semi-colon.
+
+ 
+Version 1.26
+------------
+ 1. The files KWIC1.SPT and KWIC2.SPT in the DEMOS subdirectory
+    show how to develop a simple KeyWord In Context program.  From the
+    DEMOS directory, you can run them with:
+
+           SPITBOL KWIC1 <KEYTEXT
+           SPITBOL KWIC2 <KEYTEXT
+ 
+    Output can be redirected to a file.
+ 
+ 2. The function REPLACE(X, Y, Z) returns string X with the characters
+    that occur in string Y replaced by the corresponding characters
+    of string Z.  To accomplish this, SPITBOL builds a translation table
+    to assist with the mapping.  Building this table is time-consuming,
+    so SPITBOL has always performed a minor optimization: If two
+    successive calls to REPLACE have the same second and third arguments,
+    the previous translation table can be used without rebuilding it.
+ 
+    But suppose you have two or more calls to REPLACE within a loop,
+    and the second or third arguments differ.  For example:
+ 
+     LOOP   A = REPLACE(LINE, &UCASE, &LCASE)
+            B = REPLACE(PARA, &LCASE, &UCASE)
+             ....
+                                              :(LOOP)
+ 
+    Now the translate table must be rebuilt twice during each pass
+    through the loop.  To overcome this inefficiency, this version
+    of SPITBOL incorporates a new optimization that first appeared
+    in SPITBOL/370:
+ 
+    The REPLACE function is now optimized when the second argument is
+    &ALPHABET.  In this case, the third argument can be used as a
+    translate table directly, and there is no need to construct a table
+    dynamically.  The REPLACE function itself can be used to construct
+    the necessary third argument.  Thus the call:
+ 
+            A = REPLACE(X, Y, Z)
+ 
+    may be replaced by the two calls:
+ 
+            TBL = REPLACE(&ALPHABET, Y, Z)
+            A = REPLACE(X, &ALPHABET, TBL)
+
+    The first of these calls is slow, and need only appear once. The second
+    call is fast and could be executed repeatedly for various values of X.
+    
+    A unique table can be constructed for each particular REPLACE.  The
+    example given above can be rewritten like this:
+ 
+            TBL1 = REPLACE(&ALPHABET, &UCASE, &LCASE)
+            TBL2 = REPLACE(&ALPHABET, &LCASE, &UCASE)
+     LOOP   A = REPLACE(LINE, &ALPHABET, TBL1)
+            B = REPLACE(PARA, &ALPHABET, TBL2)
+             ....
+                                              :(LOOP)
+ 
+    Measurements show that this technique will significantly improve
+    REPLACE function speed (typically by a factor of two or three).
+ 
+ 
+ Version 1.24 = 2.51 I/O
+ -----------------------
+ 1. We changed the -w and -y command-line options to proceed into execution
+    after writing a load module or save file.  You can use -wn or -yn to
+    write the file and suppress execution.
+ 
+    
+ 2. A new option has been added to the EXIT function.  EXIT(4,filename)
+    and EXIT(-4,filename) perform the same actions as EXIT(3,filename)
+    and EXIT(-3,filename), BUT DOES NOT TERMINATE EXECUTION.
+ 
+    This feature allows long-running programs to periodically checkpoint
+    their execution to protect against a system crash or power failure.
+    Note that all user files are closed by all versions of EXIT, so
+    the user must explicitly reopen I/O files after performing an
+    EXIT(4) or EXIT(-4).
+
+    EXIT(-4,filename) generates a Save file, while EXIT(4,filename)
+    generates an executable (.EXE) file.
+
+    EXIT(4) and EXIT(-4) return the value integer 1 when first invoked
+    and execution continues after creating the file.  Should the file
+    be subsequently resumed, execution begins with the EXIT function
+    returning the null string.
+
+    Note that external functions are not recorded within a Save or EXE
+    file.  Hence it is necessary to re-execute any LOAD functions when
+    resuming.  To assist you, EXIT returns integer 1 when first 
+    executed, and returns the null string resumed:
+ 
+       RESULT = EXIT(-4, "test.spx")            :F(CouldNotSave)
+       NE(RESULT)                               :S(InitialSave)
+    * Here upon resumption
+       LOAD(...)
+       LOAD(...)
+    InitialSave
+       ...
+
+
+Version 1.21 = 2.48 I/O
+-----------------------
+ 
+ 1. The garbage collector has been modified for better performance with
+    virtual memory systems.  A "sediment" algorithm allows older, long-
+    lived objects to precipitate to the bottom of the heap, where they will
+    not be moved by subsequent garbage collections.  The COLLECT() function
+    causes the sediment to be collected, so there is no external functional
+    difference visible to the programmer.  It is also collected auto-
+    matically when the amount of no-longer used space in the sediment
+    exceeds 15%.
+
+ 2. When optimization is enabled (the default), null statements are not
+    compiled.  A null statement is a statement lacking a label and a Goto,
+    and with no statement body, or a statement body consisting only of an
+    integer, real, or string constant.  Previously, such statements still
+    incurred statement startup overhead, although they did not perform any
+    useful work.  Now blank lines can be used freely and will not generate
+    any object code.
+
+    Note that a statement number is still assigned to the statement, even
+    though execution does not occur.  Thus, statement numbers will not
+    change when the optimization option is turned on or off.  Optimized
+    statements will not show up in statement trace listings when tracing
+    the &STCOUNT keyword.
+
+ 3. The include file ARGS.INC provides convenient access to user arguments
+    that follow the program name on the command line.
+
+   
+ 4. A problem with a comment line as the last line of an included file has
+    been fixed.
+
+ 5. The default maximum object size has been increased from 64 kilobytes
+    to 4 megabytes.  The default maximum workspace size has been increased
+    from 32 megabytes to 64 megabytes.
+
+ 6. Command line options to change memory settings now accept an "M" suffix
+    to specify megabytes.  For example, -d128M to change the maximum size
+    of SPITBOL's workspace to 128 megabytes.
+
+ 7. Repaired problem that resulted in destroying one byte of memory
+    if HOST(4) function (lookup environment variable) called with an
+    environment variable string whose length was a multiple of 4 bytes.
+
+ 8. The action of the CONVERT function has been changed when converting
+    a table to an array.  Previously, the table elements were placed into
+    the array in an unpredictable order, reflecting the pseudo-random
+    ordering of the table's hashing algorithm.  To provide greater
+    compatibility with SNOBOL4+ and mainframe SPITBOL, this has been
+    changed.  The array is now ordered by age of the table elements, with
+    the oldest table elements appearing before newer table elements in
+    the resultant array.
+    
+    This change has no effect on the SORT function when sorting a table
+    into an array.
+    
+
+Changes in Version 1.10 (2.46 I/O)
+----------------------------------
+ 1. Add the new protected keywords &FILE, &LINE, &LASTFILE, and &LASTLINE.
+    &FILE and &LINE provide the source file name and source file line
+    number of the current statement.  &LASTFILE and &LASTLINE provide
+    the file name and source line number of the previous statement
+    executed.  These keywords are properly adjusted when execution
+    moves into an included file.
+
+    Preprocessors generating SPITBOL code can use SPITBOL's -LINE
+    control statement to insert their source line numbers and file names
+    into the SPITBOL program.  The inserted values will be reported
+    properly by these new keywords.
+ 
+ 
+ 2. Change RSORT and SORT functions to fail if the argument is an empty
+    table.  This is compatible with the operation of SNOBOL4+ and with
+    CONVERT(table, "ARRAY").  Previously, this situation produced an
+    Error 256, "SORT/RSORT 1st arg not suitable ARRAY or TABLE".
+ 
+ 
+ 3. Add error message 320, "User interrupt" for a program interrupted
+    by the user typing Control-C.  This error can be intercepted by the
+    program with SPITBOL's SETEXIT function.  The &ERRLIMIT keyword
+    must be non-zero for SETEXIT traps to take effect.  If no SETEXIT
+    trap is active, or if &ERRLIMIT is zero, the program will terminate.
+ 
+ 
+ 4. Add new special label SCONTINUE (from SPITBOL/370) for use within
+    a SETEXIT error function.  Previously, SETEXIT error functions could
+    return by branching to the special label CONTINUE, which would cause
+    the original, interrupted statement to fail.  SCONTINUE resumes
+    at the point of interruption by branching "into" the interrupted
+    statement.  The statement resumes execution and succeeds or fails
+    normally, as if the interrupt did not occur.
+
+    SCONTINUE was added for use with error message 320, "User interrupt".
+    SCONTINUE lets the user's SETEXIT function ignore a keyboard-generated
+    interrupt by resuming execution exactly where it left off.
+
+    Add new error message 321, "Goto SCONTINUE with no preceding error".
+ 
+    Note that it is necessary to issue a new SETEXIT call prior to
+    returning if it is desired to trap a subsequent user interrupt.
+    See the description of SETEXIT in chapter 19 of the SPITBOL manual.
+ 
+ 
+ 5. Add read/write file access.  Add new processing option "-u" to specify
+    that a file is being opened for update:
+ 
+         OUTPUT(.out, 1, 'foo -u')
+         INPUT(.in, 1)
+ 
+    Alternately, the order of performing these operations can be reversed:
+ 
+         INPUT(.in, 1, 'foo -u')
+         OUTPUT(.out, 1)
+  
+    Note that the second function of the pair does not specify a file name.
+    It just opens the "other direction" of an existing I/O channel.
+  
+    Having done this, records of the file can be read and written using
+    the associated variables.  The current read/write pointer into the
+    file can be manipulated with SPITBOL's SET function.
+  
+    Only one record length can be specified for a given channel.
+    When a file is open for update, the default output record length is
+    the same as the default input record length, which is 1024.  If a longer
+    output length is needed, it must be set explicitly with the -l option.
+  
+    Users doing numerous random-access seeks to a file (via the SET
+    function) may notice improved performance by setting the buffer size
+    smaller than the default 1,024 bytes (but larger than the record size).
+    For example, if your record size is 80 characters, try setting the
+    buffer to 128 characters (using the I/O option -b128).
+  
+  
+6 . Add new I/O processing options allowing user to specify the end-of-
+    line conventions.  End of line can be marked by either a one- or two-
+    character sequence.  These processing options appear in the options
+    portion of the third argument to the INPUT or OUTPUT function.
+  
+    -m# specifies the first end-of-line character, where # is the decimal
+    code of the desired character, and must be in the range 0 to 255.
+    During line-mode input this character will terminate an input line.
+    During line-mode output, it is appended to the output string.
+
+    -n# specifies an optional second end-of-line character to follow the
+    first end-of-line character.  In this case, # is zero to specify no
+    second character; otherwise it must be a decimal number in the range
+    1 to 255.  The values of -m and -n are defaulted as follows:
+  
+                               m              n
+                          -----------    -----------
+    MS-DOS systems        13 (return)    10 (newline)
+    Macintosh             13 (return)    0 (none)
+    Unix                  10 (newline)   0 (none)
+  
+    Any combination of values for m and n can be used on any system,
+    making it simple to write conversion programs that read and write
+    files using foreign end-of-line conventions.  Note that null (0) is
+    an allowed value for m, the first end-of-line character, making it
+    possible to input or output null-delimited records.
+  
+    The second end-of-line character is always optional.  That is, when
+    SPITBOL finds the first end-of-line character in an input record, it
+    examines the next input character.  If it is the second end-of-line
+    character, it is discarded.  But even if it isn't, the end-of-line
+    condition is still returned.
+  
+    Alternate end-of-line characters may not be used with console input,
+    since they are usually determined by the operating system, and hence
+    not under SPITBOL's control.
+
+ 
+ 7. Added BACKSPACE(channel) function.  The argument is an I/O channel
+    previously used as the second argument to the INPUT or OUTPUT function.
+
+    The file associated with the channel is positioned backwards one
+    record.  If the file is a binary (raw mode) file, the file position
+    is decremented by the record size when the file was opened or created.
+
+    If the file is a text (line mode) file, it is scanned backwards and
+    positioned at the beginning of the previous record.  The method used
+    is as follows:
+
+      If an end-of-line character is found immediately preceding the
+      current file position, it is ignored.  The file is then scanned
+      in reverse until another end-of-line character is found.  The
+      file is then positioned just forward of the end-of-line character.
+ 
+    BACKSPACE stops at Beginning-of-File.  BACKSPACE fails if the channel
+    is not a disk file.  If it succeeds, the null string is returned.
+ 
+ 
+ 8. Improved performance when writing long strings to a file.  A long
+    string is one that is larger than the file buffer (default 1024
+    characters).
+
+
+ 9. Allow unbuffered (-w) line mode input, which was formerly disallowed.
+    Note that this is not as efficient as buffered mode.
+
+
+From version 1.01 to version 1.09
+---------------------------------
+On stack overflow in garbage collector, suppress file name, line number
+message to avoid memory fault due to bogus memory pointers.
+
+Fixed problems if garbage collection triggered in the middle of opening
+a data file or loading an external function.
+
+Fixed problem that hung system when opening or closing files if the
+channel variable was being traced for other purposes.  For example,
+     TRACE(.V2); OUTPUT(.V1,.V2,file)
+would hang.
+
+Ignore leading and trailing blanks around arguments within the prototype
+string of functions CLEAR, DATA, DEFINE, and LOAD.
+
+Fixed problem with -INCLUDE statement when typing in program directly
+from the keyboard.
+
+Added include file SNOBOL4.INC to ease conversion of programs from
+SNOBOL4+ to SPITBOL.
+
+Fixed a problem with writing garbage characters when the -L option was
+used in the OUTPUT function to force a logical record to be split
+across several physical records.
+
+Fix EVAL("*(var $ output)") to produce an EXPRESSION instead of a PATTERN.
+Previously, the PATTERN was capturing the value in var, which is clearly
+wrong.  This construction only misbehaved in Macro SPITBOL; it works
+properly in SPITBOL/370 and SNOBOL4+.
+
+Fix an obscure bug that has been in all versions of Macro SPITBOL: 
+repeated use of the COPY function with a TABLE argument could
+result in a page fault during garbage collection.
+
+
+-----------   End of file HISTORY.TXT   -----------------

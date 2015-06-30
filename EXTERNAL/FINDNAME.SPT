@@ -1,0 +1,34 @@
+*  Copyright 1994-2003, Mark Emmer, Catspaw, Inc.  All rights reserved.
+*  Use of this source code is governed by a BSD-style
+*  license that can be found in the LICENSE file.
+
+* FINDNAME.SPT
+*
+* Test program demonstrating the use of FINDNAME to walk a directory tree.
+*
+* The function display is called for each directory entry.
+*
+* Note the recursion in the visit function as we step down to a lower level
+* subdirectory.  This shows that multiple FindFile searches can be active
+* at once, because the state information is maintained in the external block
+* returned by FindFirst and FindNext.
+*
+-include "findname.inc"
+        define('display(dir,x)')                :(display_end)
+display output = dir FindInfo(x,'N')            :(return)
+display_end
+
+        define('visit(dir,filespec)n,x')        :(visit_end)
+visit   x = FindFirst(dir filespec)             :f(freturn)
+* Look for Directory attribute.  Ignore "." and "..", recurse on all others.
+visit1  FindInfo(x,"A") ? POS(0) BREAK("D")     :f(visit2)
+        n = FindInfo(x,"N")
+        n ? POS(0) "."                          :s(visit3)
+        visit(dir n "\", filespec)              :(visit3)
+visit2  display(dir,x)
+visit3  FindNext(x)                             :f(freturn)s(visit1)
+visit_end
+
+* Main program starts here.  Directory name must always end with a '\'.
+        visit("c:\", "*.*")
+end

@@ -1,0 +1,157 @@
+# makefile
+#
+# Windows NT SPITBOL-386.  Makefile for SPITBOL external functions.   
+#
+# Builds external functions into two library files: spitbol.slf and
+# nt95only.slf.
+#
+# spitbol.slf  - functions which will run with NT SPITBOL-386 on all
+#                platforms:  MS-DOS, Windows 3.11, Windows for Workgroups,
+#                Windows 95, and Windows NT.
+#
+# nt95only.slf - functions which will load only under Windows NT or
+#                Windows 95.  Attempting to load any of these functions
+#                under MS-DOS or Windows 3.11, etc. will result in SPITBOL
+#                error message 142, LOAD function does not exist.  (This
+#                is because it imports functions from system DLLs that
+#                are only available under Windows NT or 95).
+#
+# Designed for Borland C++ compiler and Assembler (TASM or TASM32).
+#
+#  Assumes MS-DOS environment variable "BORLAND" is set to the drive
+#  and path of the Borland C++ root directory.  For example,
+#      C:>SET BORLAND=C:\BC4
+#
+# To add a new external function to the library, add the .obj form of
+# its name to ('SPIT'|'NT95') ('AOBJS'|'COBJS') and also add it to file  
+# spitbol.lnk or nt95only.lnk.
+#
+# If the new external function requires import32.lib (or other libraries)
+# that are not available in DOS, place your function in nt95only.slf.
+#
+#
+
+# Name of SPITBOL Libraries to build (.slf).
+#
+# The makefile is designed to build the libraries in the parent directory:
+# For example, if this makefile is run in \spitbol\external, the
+# slf files will be built in \spitbol.  This is because the LOAD function
+# looks for DLL files in the directory where the SPITBOL executable resides.
+#
+SPITLIBNAME= spitbol
+NT95LIBNAME= nt95only
+
+# SPITBOL Version:
+SETREAL=0                       # 1=Build to support files > 2GB
+
+%set $(BORLAND) = BORLAND       # Pick up from DOS environment
+
+# Compiler
+CC=	bcc32
+CFLAGS= -WXD -I$(BORLAND)\include -a1 -d -w-par -O1 -DSETREAL=$(SETREAL)
+
+# Linker:
+#
+LNK=	tlink32
+LFLAGS= /Tpd
+
+# Assembler:
+#
+AS=	tasm32
+ASFLAGS= /r /ml /d_MASM_=0 /dSETREAL=$(SETREAL) 
+
+# Implicit rule for building objects from C files.
+.c.obj:
+	$(CC) /c $(CFLAGS) $<
+
+# Implicit rule for building objects from C files.
+.asm.obj:
+	$(AS) $(ASFLAGS) $<, $&.obj;
+
+# C Headers:
+CHDRS=	extern32.h blocks32.h system.h
+
+# Assembler Headers:
+AHDRS=  extrn386.inc block386.inc system.inc
+
+# SPITBOL return functions:
+SOBJS=  extrnlib.obj
+
+# C external functions:
+SPITCOBJS=  cvt.obj directs.obj filename.obj findname.obj logic.obj \
+            pathname.obj realcvt.obj strftime.obj windows.obj
+
+NT95COBJS=  clipbrd.obj sockets.obj
+
+# Assembly language external functions:
+SPITAOBJS=  ltrim.obj address.obj x.obj
+
+NT95AOBJS=
+
+# All objects:
+SPITOBJS=   $(SPITAOBJS) $(SPITCOBJS) $(SOBJS)
+
+NT95OBJS=   $(NT95AOBJS) $(NT95COBJS) $(SOBJS)
+
+# Targets to build:
+#
+all:    ..\$(SPITLIBNAME).slf ..\$(NT95LIBNAME).slf
+
+# Library module (DLL):
+#
+..\$(SPITLIBNAME).slf: $(SPITOBJS)
+        $(LNK) $(LFLAGS) -L$(BORLAND)\lib c0d32 @$(SPITLIBNAME).LNK, \
+               ..\$(SPITLIBNAME).slf, , dpmi32 cw32
+
+..\$(NT95LIBNAME).slf: $(NT95OBJS)
+        $(LNK) $(LFLAGS) -L$(BORLAND)\lib c0d32 @$(NT95LIBNAME).LNK, \
+               ..\$(NT95LIBNAME).slf, , dpmi32 cw32 import32
+
+# Cleanup:
+clean:
+        del address.obj
+        del clipbrd.obj
+	del cvt.obj
+        del directs.obj
+        del extrnlib.obj
+	del filename.obj
+	del findname.obj
+	del logic.obj
+        del ltrim.obj
+	del pathname.obj
+	del realcvt.obj
+        del sockets.obj
+	del strftime.obj
+        del windows.obj
+	del x.obj
+
+### MKMF:  Do not remove this line!  Automatic dependencies follow.
+
+address.obj:    $(AHDRS)
+
+clipbrd.obj:    $(CHDRS) 
+
+cvt.obj:        $(CHDRS) 
+
+extrnlib.obj:   $(CHDRS)
+
+filename.obj:   $(CHDRS)
+
+findname.obj:   $(CHDRS)
+
+logic.obj:      $(CHDRS)
+
+ltrim.obj:      $(AHDRS)
+
+pathname.obj:   $(CHDRS)
+
+realcvt.obj:    $(CHDRS)
+
+sockets.obj:    $(CHDRS) 
+
+strftime.obj:   $(CHDRS)
+
+windows.obj:    $(CHDRS)
+
+x.obj:		$(AHDRS)
+

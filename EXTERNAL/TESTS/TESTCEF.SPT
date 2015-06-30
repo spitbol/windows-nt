@@ -1,0 +1,125 @@
+* Copyright 1994-2003, Mark Emmer, Catspaw, Inc.  All rights reserved.
+* Use of this source code is governed by a BSD-style
+* license that can be found in the LICENSE file.
+
+* Test string return from C external function.
+*
+* Should write OK to terminal.
+*
+	terminal = "TESTCEF1"
+	load("testcef1(integer,real,string)","testef.slf")
+	terminal = testcef1(100, 1000.0, "ABCD")
+
+* Test integer return from C external function.
+*
+* Should write 101 to terminal.
+*
+	terminal =
+	terminal = "TESTCEF2"
+	load("testcef2(integer,real,string)","testef.slf")
+	terminal = testcef2(100, 1000.0, "ABCD")
+
+* Test real return and arithmetic from C external function.
+*
+* Should write 999.0 to terminal.
+*
+	terminal =
+	terminal = "TESTCEF3"
+	load("testcef3(integer,real,string)","testef.slf")
+	terminal = testcef3(100, 1000.0, "ABCD")
+
+* Test far string return from C external function.
+*
+* Should write "This is a far string result" to terminal.
+*
+	terminal =
+	terminal = "TESTCEF4"
+	load("testcef4(integer,real,string)","testef.slf")
+	terminal = testcef4(100, 1000.0, "ABCD")
+
+* Test external block return from C external function.
+*
+* Should write EXTERNAL followed by OK to terminal.
+*
+	terminal =
+	terminal = "TESTCEF5"
+	load("testcef5(integer,real,string,other)","testef.slf")
+	terminal = x = testcef5(100, 1000.0, "ABCD",)	;* should print EXTERNAL
+	collect()
+	terminal = testcef5(100, 1000.0, "ABCD", x)	;* should print OK
+
+* Test far external block return from C external function.
+*
+* Should write EXTERNAL followed by OK to terminal.
+*
+	terminal =
+	terminal = "TESTCEF6"
+	load("testcef6(integer,real,string,other)","testef.slf")
+	terminal = x = testcef6(100, 1000.0, "ABCD",)	;* should print EXTERNAL
+	collect()
+	terminal = testcef6(100, 1000.0, "ABCD", x)	;* should print OK
+
+* Test far external block return from C external function.
+* The function uses malloc and so requires a heap expansion.
+*
+* Should write EXTERNAL followed by OK to terminal.
+*
+	terminal =
+	terminal = "TESTCEF7"
+	load("testcef7(integer,real,string,other)","testef.slf")
+	terminal = x = testcef7(100, 1000.0, "ABCD",)	;* should print EXTERNAL
+	collect()
+	terminal = testcef7(100, 1000.0, "ABCD", x)	;* should print OK
+
+* Test heap expansion and use of malloc() and free().
+*
+*
+	terminal =
+	terminal = "TESTCEF8"
+	load("testcef8(integer)","testef.slf")
+	terminal = x = testcef8(-1024)			;* allocate 1K block
+	terminal = y = testcef8(-2048)			;* allocate 2K block
+	terminal = testcef8(x)				;* free the 1K block
+	terminal = z = testcef8(-200)			;* allocate 200 bytes
+	terminal = testcef8(y)				;* free the 2K block
+	terminal = testcef8(z)				;* free the 200 bytes
+
+* Test ability to do a printf from the function.
+* Also test use of function with save file.
+* After running with SPITBOL TESTCEF, run a second time
+* with SPITBOL TESTCEF.SPX.
+*
+* Should write "via printf: 100 1000.0 ABCD" and OK to terminal.
+*
+	terminal =
+	terminal = "TESTCEF9"
+	load("testcef9(integer,real,string)","testef.slf")
+	terminal = testcef9(100, 1000.0, "ABCD")
+	terminal = "Enter 'spitbol testcef.spx' to resume testing"
+	exit(-3,"testcef.spx")
+* Resume here when Save file reloaded.
+	terminal = "TESTCEF9 (continued)"
+	load("testcef9(integer,real,string)","testef.slf")
+	terminal = testcef9(100, 1000.0, "ABCD")
+
+* Test ability to do an fprintf from the function.
+* Also test use of function with save file.
+* After running with SPITBOL TESTCEF, run a second time
+* with SPITBOL TESTCEF.SPX.
+*
+	terminal =
+	terminal = "TESTCEFA"
+	load("testcefa(integer)","testef.slf")
+	terminal = testcefa(1)
+	terminal = testcefa(2)
+	terminal = testcefa(3)
+	terminal = testcefa(1000)	;* close file flag
+        terminal = "Enter 'spitbol testcef.spx' to resume testing"
+        exit(-3,"testcef.spx")
+	terminal = "After testcefa save:"
+	load("testcefa(integer)","testef.slf")
+	terminal = testcefa(11)
+	terminal = testcefa(12)
+	terminal = testcefa(13)
+	terminal = testcefa(1000)	;* close file flag
+end

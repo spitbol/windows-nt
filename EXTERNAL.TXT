@@ -1,0 +1,120 @@
+                   SPITBOL External Functions
+                   --------------------------
+
+External functions are written in another language (typically C or
+Assembler), and instantiated in a SPITBOL program by way of SPITBOL's
+LOAD function.
+
+The LOAD function specifies the name of the function, the type and number
+of arguments, and the name of the library containing the function.
+
+For SPITBOL-386, external functions are created as 32-bit Windows DLLs
+(Dynamic Link Libraries).  Loading any function from the library causes
+the entire library to be loaded into memory.
+
+Most external functions will run in all environments where SPITBOL-386 runs:
+MS-DOS, Windows 3.1, Windows 95, OS/2, and Windows NT.  A few functions
+(clipboard, sockets) are Windows NT/95 specific and will only operate in
+those environments.
+
+We have adapted the convention of naming external functions
+
+     EXT_FUNCTIONNAME_
+
+and providing a matching SPITBOL include file to do the actual
+LOAD() function call.  An OPSYN call is used to make a nicer version of
+the name equivalent to "EXT_FUNCTIONNAME_", such as FunctionName.
+
+In a few cases, the include file will wrap the external function with
+a SPITBOL function rather than an OPSYN.  Isolating the common name by
+which the function will be known to the user from the name in the library
+file permits the implementation to be altered without the calling program's
+knowledge. (Thanks to Arjan Loeffen for suggesting this technique).
+
+For example,
+
+        LOAD("EXT_LTRIM_(STRING)STRING", "spitbol.slf")
+        OPSYN("LTrim", "EXT_LTRIM_")
+
+aliases the name "LTrim" to "EXT_LTRIM_", and loads the file from the
+library "spitbol.slf".  The function takes a single string argument and
+returns a string result.
+
+When the LOAD function is executed, the operating system and SPITBOL search
+for the library file in several places, and in this order:
+
+1. The directory from which the spitbol.exe executable was loaded.
+2. The current directory.
+3. The Windows system directory.
+4. The Windows directory.
+5. The directories specified in the PATH environment variable.
+6. The directories specified in the SNOLIB environment variable.
+
+Notice that the current directory is NOT first on this list.  This can cause
+much frustration when you put a new version of a library into the current
+directory, and the operating system continues to load an older version with
+the same name from the directory containing spitbol.exe!
+
+
+                   Libraries Provided with SPITBOL
+                   -------------------------------
+
+Two libraries are provided:
+
+1. spitbol.slf contains functions that operate in all environments.
+2. nt95only.slf contains functions that require Windows 95 or NT.
+
+Equivalent include files are provided: spitbol.inc and nt95only.inc. 
+In turn, they include other files for the specific functions.  The
+include files should be consulted for specific calling sequences and
+documentation of the functions.
+
+spitbol.inc includes:
+ address.inc     obtain memory address of names and values
+ cvt.inc         convert integers and reals to and from internal form
+ directs.inc     file directory functions
+ filename.inc    old wildcard file name search
+ findname.inc    new wildcard file and directory name search
+ logic.inc       boolean functions, base-conversion functions
+ ltrim.inc       left trim a string
+ pathname.inc    obtain pathname of an I/O channel
+ realcvt.inc     convert real to string using SNOBOL4+ format control
+ strftime.inc    obtain date and time in various formats
+ windows.inc     obtain Windows directories, last error code
+ x.inc           maintain 32-bit binary words in an external data block
+
+nt95only.inc includes:
+ clipbrd.inc     get and put data to the Windows 95/NT clipboard
+ sockets.inc     sockets interface -- INCOMPLETE AT THIS TIME
+
+
+Sample programs include:
+ findname.spt    display all files on drive C:
+ realcvt.spt     test real number formatting
+
+We suggest placing the *.slf library files in the same directory as the
+SPITBOL executable, and the include files in the directory where your
+source program resides.
+
+
+                       Building Libraries
+                       ------------------
+
+These library files were built using Borland C++ 4.02 using the makefile
+provided in the external\ directory.
+
+We have also successfully built external function libraries using Microsoft
+Developer Studio and Visual C++ 4.2.  Instructions for using VC++ are
+provided in the file external\msc-vcpp.txt.
+
+The following files should be specially noted:
+ external\blocks32.h   C include file for external functions
+ external\extern32.h   C include file for external functions
+ external\system.h     C include file for external functions
+ external\block386.inc Assembler include file for external functions
+ external\extrn386.inc Assembler include file for external functions
+ external\system.inc   Assembler include file for external functions
+ external\extrnlib.c   Utility routines for external functions -- source
+ external\extrnlib.obj Utility routines for external functions -- object
+ external\makefile     Makefile to build spitbol.slf and nt95only.slf
+

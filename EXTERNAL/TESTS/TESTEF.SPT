@@ -1,0 +1,50 @@
+* Copyright 1994-2003, Mark Emmer, Catspaw, Inc.  All rights reserved.
+* Use of this source code is governed by a BSD-style
+* license that can be found in the LICENSE file.
+
+* Test string return from external function.
+*
+* Should write OK to terminal.
+*
+	load("testef1(integer,real,string)","testef.slf")
+	terminal = testef1(100, 1000.0, "ABCD")
+
+* Test integer return from external function.
+*
+* Should write 101 to terminal.
+*
+	load("testef2(integer,real,string)","testef.slf")
+	terminal = testef2(100, 1000.0, "ABCD")
+
+* Test real return and arithmetic from external function.
+*
+* Should write 999.0 to terminal.
+*
+	load("testef3(integer,real,string)","testef.slf")
+	terminal = testef3(100, 1000.0, "ABCD")
+
+* Test far string return from external function.
+*
+* Should write "This is a far string result" to terminal.
+*
+	load("testef4(integer,real,string)","testef.slf")
+	terminal = testef4(100, 1000.0, "ABCD")
+
+* Test external block return from external function.
+*
+* Should write EXTERNAL followed by OK to terminal.
+*
+	load("testef5(integer,real,string,other)","testef.slf")
+	terminal = x = testef5(100, 1000.0, "ABCD",)	;* should print EXTERNAL
+	collect()
+	terminal = testef5(100, 1000.0, "ABCD", x)	;* should print OK
+
+* Test far external block return from external function.
+*
+* Should write EXTERNAL followed by OK to terminal.
+*
+	load("testef6(integer,real,string,other)","testef.slf")
+	terminal = x = testef6(100, 1000.0, "ABCD",)	;* should print EXTERNAL
+	collect()
+	terminal = testef6(100, 1000.0, "ABCD", x)	;* should print OK
+end
