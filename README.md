@@ -1,7 +1,12 @@
 #           SPITBOL for Windows NT - Version 1.30.22
 
-December 24, 2003
+(The release of this version of SPITBOL is based on the file
+spit3022.zip received from Mark Emmer on 5/11/2009.)
 
+The remainder of this file is the content of the file README.TXT
+converted to Github markdown format...
+
+Released on December 24, 2003.
 
 This version of SPITBOL uses the Windows NT API for O/S support.
 It does not make any DOS or INT xx calls, and runs in a Win NT
@@ -79,7 +84,7 @@ The following other items should be noted:
 
 ## Contents of the release when delivered electronically:
 
-``
+```
 SPITBOL.EXE               SPITBOL compiler and interpreter
 CODE.SPT                  Interactive statement execution program
 HOST.INC                  SPITBOL include file for HOST functions
